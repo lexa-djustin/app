@@ -60,7 +60,7 @@ class User implements \JsonSerializable
     /**
      * @return string
      */
-    public function getUsername(): string
+    public function getUsername()
     {
         return $this->username;
     }
@@ -76,7 +76,7 @@ class User implements \JsonSerializable
     /**
      * @return string
      */
-    public function getPassword(): string
+    public function getPassword()
     {
         return $this->password;
     }
@@ -99,7 +99,7 @@ class User implements \JsonSerializable
             return $this->token->getToken();
         }
 
-        return null;
+        return $this->token;
     }
 
     /**

@@ -8,6 +8,11 @@ use Doctrine\Common\Persistence\ManagerRegistry;
 
 class User extends ServiceEntityRepository
 {
+    /**
+     * User constructor.
+     *
+     * @param ManagerRegistry $registry
+     */
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, Entity\User::class);

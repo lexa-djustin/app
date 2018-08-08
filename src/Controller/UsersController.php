@@ -18,6 +18,7 @@ use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Serializer\Encoder;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use App\Entity;
+use App\Controller\Helper;
 
 /**
  *
@@ -27,13 +28,13 @@ class UsersController extends AbstractController
 {
     /**
      * @Route("/login", methods={"POST"})
+     *
+     * @param Request $request
+     *
+     * @return Response
      */
     public function login(Request $request): Response
     {
-        if ($request->getContentType() !== 'json') {
-            return new JsonResponse(['reason' => 'Invalid data type'], 400);
-        }
-
         $decoder = new Encoder\JsonDecode();
         $data = $decoder->decode($request->getContent(), Encoder\JsonEncoder::FORMAT);
 
@@ -46,68 +47,73 @@ class UsersController extends AbstractController
             return new JsonResponse(['reason' => 'User was not found'], 400);
         }
 
-        if (!$user->hasToken()) {
-            $user->createToken();
-        }
+        $user->createToken();
 
         $this->getDoctrine()->getManager()->persist($user);
         $this->getDoctrine()->getManager()->flush();
 
-        $response = new JsonResponse(['token' => $user->getToken()]);
-
-        return $response;
+        return new JsonResponse(['token' => $user->getToken()]);
     }
 
     /**
      * @Route("/me", methods={"GET"})
+     *
+     * @param Request $request
+     *
+     * @return Response
      */
     public function me(Request $request): Response
     {
-        /** @var Entity\User $user */
-        $user = $this->getDoctrine()->getRepository(Entity\User::class)->findOneByToken(
-            $request->headers->get('x-access-token')
-        );
+        try {
+            $user = $this->getCurrentUser($request);
 
-        if (!$user) {
-            return new JsonResponse(['reason' => 'User was not found'], 400);
+            return new JsonResponse($user);
+        } catch (Exception\UserWasNotFound $e) {
+            return new JsonResponse(['Reason' => $e->getMessage()], $e->getCode());
         }
-
-        return new JsonResponse($user);
     }
 
     /**
      * @Route("/logout", methods={"GET"})
+     *
+     * @param Request $request
+     *
+     * @return Response
      */
     public function logout(Request $request): Response
     {
-        /** @var Entity\User $user */
-        $user = $this->getDoctrine()->getRepository(Entity\User::class)->findOneByToken(
-            $request->headers->get('x-access-token')
-        );
+        try {
+            $user = $this->getCurrentUser($request);
+            $user->clearToken();
 
-        if (!$user) {
-            return new JsonResponse(['reason' => 'User was not found'], 400);
+            $this->getDoctrine()->getManager()->persist($user);
+            $this->getDoctrine()->getManager()->flush();
+
+            return new Response('', 200);
+        } catch (Exception\UserWasNotFound $e) {
+            return new JsonResponse(['Reason' => $e->getMessage()], $e->getCode());
         }
-
-        $user->clearToken();
-
-        $this->getDoctrine()->getManager()->persist($user);
-        $this->getDoctrine()->getManager()->flush();
-
-        exit(__FUNCTION__);
-
-        return new Response('', 200);
     }
 
-    protected function checkUser(Request $request)
+    /**
+     * @param Request $request
+     *
+     * @return Entity\User
+     * @throws Exception\UserWasNotFound
+     */
+    private function getCurrentUser(Request $request)
     {
         /** @var Entity\User $user */
         $user = $this->getDoctrine()->getRepository(Entity\User::class)->findOneByToken(
             $request->headers->get('x-access-token')
         );
 
+        $this->getDoctrine()->getManager()->refresh($user);
+
         if (!$user) {
-            return new JsonResponse(['reason' => 'User was not found'], 400);
+            throw new Exception\UserWasNotFound('Unauthorized', 401);
         }
+
+        return $user;
     }
 }

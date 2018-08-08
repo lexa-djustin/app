@@ -10,7 +10,7 @@ use Doctrine\ORM\Mapping as ORM;
  * @ORM\Table(name="product")
  * @ORM\Entity
  */
-class Product
+class Product implements \JsonSerializable
 {
     /**
      * @var integer
@@ -77,7 +77,7 @@ class Product
     /**
      * @return float
      */
-    public function getPrice(): float
+    public function getPrice()
     {
         return $this->price;
     }
@@ -111,7 +111,7 @@ class Product
      *
      * @return Product
      */
-    public static function fromArray(array $data) : Product
+    public static function fromArray(array $data)
     {
         $product = new self();
 
@@ -122,13 +122,23 @@ class Product
 
     /**
      * @param array $data
-     *
-     * @return Product
      */
     public function modify(array $data)
     {
         $this->setName($data['name']);
         $this->setPrice($data['price']);
         $this->setAmount($data['amount']);
+    }
+
+    /**
+     * @return array
+     */
+    public function jsonSerialize()
+    {
+        return [
+            'name' => $this->getName(),
+            'price' => $this->getPrice(),
+            'amount' => $this->getAmount(),
+        ];
     }
 }
