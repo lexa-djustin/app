@@ -47,7 +47,9 @@ class UsersController extends AbstractController
             return new JsonResponse(['reason' => 'User was not found'], 400);
         }
 
-        $user->createToken();
+        if (!$user->hasToken()) {
+            $user->createToken();
+        }
 
         $this->getDoctrine()->getManager()->persist($user);
         $this->getDoctrine()->getManager()->flush();
@@ -108,11 +110,11 @@ class UsersController extends AbstractController
             $request->headers->get('x-access-token')
         );
 
-        $this->getDoctrine()->getManager()->refresh($user);
-
         if (!$user) {
             throw new Exception\UserWasNotFound('Unauthorized', 401);
         }
+
+        $this->getDoctrine()->getManager()->refresh($user);
 
         return $user;
     }
