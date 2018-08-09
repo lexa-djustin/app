@@ -14,8 +14,21 @@ use App\Entity;
  *
  * @Route("/api/v1/products")
  */
-class ProductСontroller extends AbstractController
+class ProductController extends AbstractController
 {
+    /** @var Helper\User */
+    private $userHelper;
+
+    /**
+     * ProductController constructor.
+     *
+     * @param Helper\User $user
+     */
+    public function __construct(Helper\User $user)
+    {
+        $this->userHelper = $user;
+    }
+
     /**
      * @Route("/", methods={"POST"})
      *
@@ -26,7 +39,7 @@ class ProductСontroller extends AbstractController
     public function add(Request $request): Response
     {
         try {
-            $this->checkUser($request);
+            $this->userHelper->checkAndGet();
 
             $decoder = new Encoder\JsonDecode();
             $data = (array) $decoder->decode($request->getContent(), Encoder\JsonEncoder::FORMAT);
@@ -38,7 +51,7 @@ class ProductСontroller extends AbstractController
             return new JsonResponse(['Reason' => $e->getMessage()], $e->getCode());
         }
 
-        return new Response('', 200);;
+        return new Response();
     }
 
     /**
@@ -52,7 +65,7 @@ class ProductСontroller extends AbstractController
     public function update(Request $request, $id): Response
     {
         try {
-            $this->checkUser($request);
+            $this->userHelper->checkAndGet();
 
             /** @var Entity\Product $product */
             $product = $this->getDoctrine()->getRepository(Entity\Product::class)->find($id);
@@ -68,7 +81,7 @@ class ProductСontroller extends AbstractController
             $this->getDoctrine()->getManager()->persist($product);
             $this->getDoctrine()->getManager()->flush();
 
-            return new Response('', 200);
+            return new Response();
         } catch (Exception\UserWasNotFound $e) {
             return new JsonResponse(['Reason' => $e->getMessage()], $e->getCode());
         }
@@ -85,7 +98,7 @@ class ProductСontroller extends AbstractController
     public function receive(Request $request, $id): Response
     {
         try {
-            $this->checkUser($request);
+            $this->userHelper->checkAndGet();
 
             /** @var Entity\Product $product */
             $product = $this->getDoctrine()->getRepository(Entity\Product::class)->find($id);
@@ -97,23 +110,6 @@ class ProductСontroller extends AbstractController
             return new JsonResponse($product);
         } catch (Exception\UserWasNotFound $e) {
             return new JsonResponse(['Reason' => $e->getMessage()], $e->getCode());
-        }
-    }
-
-    /**
-     * @param Request $request
-     *
-     * @throws Exception\UserWasNotFound
-     */
-    private function checkUser(Request $request)
-    {
-        /** @var Entity\User $user */
-        $user = $this->getDoctrine()->getRepository(Entity\User::class)->findOneByToken(
-            $request->headers->get('x-access-token')
-        );
-
-        if (!$user) {
-            throw new Exception\UserWasNotFound('Unauthorized', 401);
         }
     }
 }

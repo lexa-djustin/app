@@ -26,6 +26,19 @@ use App\Controller\Helper;
  */
 class UsersController extends AbstractController
 {
+    /** @var Helper\User */
+    private $userHelper;
+
+    /**
+     * UsersController constructor.
+     *
+     * @param Helper\User $user
+     */
+    public function __construct(Helper\User $user)
+    {
+        $this->userHelper = $user;
+    }
+
     /**
      * @Route("/login", methods={"POST"})
      *
@@ -67,7 +80,7 @@ class UsersController extends AbstractController
     public function me(Request $request): Response
     {
         try {
-            $user = $this->getCurrentUser($request);
+            $user = $this->userHelper->checkAndGet();
 
             return new JsonResponse($user);
         } catch (Exception\UserWasNotFound $e) {
@@ -85,37 +98,15 @@ class UsersController extends AbstractController
     public function logout(Request $request): Response
     {
         try {
-            $user = $this->getCurrentUser($request);
+            $user = $this->userHelper->checkAndGet();
             $user->clearToken();
 
             $this->getDoctrine()->getManager()->persist($user);
             $this->getDoctrine()->getManager()->flush();
 
-            return new Response('', 200);
+            return new Response();
         } catch (Exception\UserWasNotFound $e) {
             return new JsonResponse(['Reason' => $e->getMessage()], $e->getCode());
         }
-    }
-
-    /**
-     * @param Request $request
-     *
-     * @return Entity\User
-     * @throws Exception\UserWasNotFound
-     */
-    private function getCurrentUser(Request $request)
-    {
-        /** @var Entity\User $user */
-        $user = $this->getDoctrine()->getRepository(Entity\User::class)->findOneByToken(
-            $request->headers->get('x-access-token')
-        );
-
-        if (!$user) {
-            throw new Exception\UserWasNotFound('Unauthorized', 401);
-        }
-
-        $this->getDoctrine()->getManager()->refresh($user);
-
-        return $user;
     }
 }
